@@ -135,7 +135,11 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
     private void start() {
         //初始化
-        int ret = mRtmpPublisher.init(url, previewSize.width, previewSize.height, 5);
+        String testStr = "rtmp://";
+        testStr += GlobalContextValue.VideoServiceIP;
+        testStr += ":1935/hls/";
+        testStr += GlobalContextValue.ServiceName;
+        int ret = mRtmpPublisher.init(testStr, previewSize.width, previewSize.height, 5);
 
         if (ret < 0) {
             Log.e(TAG, "连接失败");
@@ -348,7 +352,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         } else {  // back-facing
             result = (info.orientation - degrees + 360) % 360;
         }
-        camera.setDisplayOrientation(result);
+        //20180105 因为摄像头摄像需要调整
+        camera.setDisplayOrientation(90);
     }
 
     private void setCameraParameters() {
