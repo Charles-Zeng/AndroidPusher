@@ -1,8 +1,13 @@
 package com.blueberry.media;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -32,6 +37,7 @@ public class LoginActivity extends Activity {
     private InetSocketAddress isa = null;
     private String logMsg;
     private static final String TAG = "LoginActivity";
+    private MessageBroadcastReceiver receiver;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,6 +51,7 @@ public class LoginActivity extends Activity {
             // TODO Auto-generated method stub
             //初始化从界面上获取的值
             GetInputData();
+            registerBroadcast();
             //建立socket通信
             setSocket();
             //跳转到页面实现
@@ -85,8 +92,8 @@ public class LoginActivity extends Activity {
     }
 
     private void setSocket() {
-        Client client = new Client();
-        client.start();
+        MinaThread mThread = new MinaThread();
+        mThread.start();
             }
     /*class tcpClient extends Thread {
         public void run() {
@@ -129,4 +136,16 @@ public class LoginActivity extends Activity {
             }
         }
     }*/
+    private void registerBroadcast() {
+        receiver = new MessageBroadcastReceiver();
+        IntentFilter filter = new IntentFilter("com.commonlibrary.mina.broadcast");
+        LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter);
+    }
+    private class MessageBroadcastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            //receive_tv.setText(intent.getStringExtra("message"));
+        }
+    }
 }

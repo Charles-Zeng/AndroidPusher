@@ -3,8 +3,11 @@ package com.blueberry.media;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
@@ -18,6 +21,7 @@ import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Surface;
@@ -25,6 +29,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
@@ -66,31 +71,22 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     private Camera.Size previewSize;
     private Context mContext;
     private long presentationTimeUs;
-    MediaCodec vencoder;
-    private Thread recordThread;
-    private boolean aLoop;
+    static MediaCodec vencoder;
+    private static Thread recordThread;
+    private static boolean aLoop;
     private Activity act;
-    private AudioRecord mAudioRecord;
+    private static AudioRecord mAudioRecord;
     private byte[] aBuffer;
-    private MediaCodec aencoder;
+    private static MediaCodec aencoder;
     private int aSampleRate;
     private int aChanelCount;
     private int colorFormat;
     private MediaCodec.BufferInfo aBufferInfo = new MediaCodec.BufferInfo();
     private MediaCodec.BufferInfo vBufferInfo = new MediaCodec.BufferInfo();
-    private boolean isPublished;
-    private RtmpPublisher mRtmpPublisher = new RtmpPublisher();
+    private static boolean isPublished;
+    private static RtmpPublisher mRtmpPublisher = new RtmpPublisher();
     ////////////////////以下获取摄像头权限////////////
     private static final int REQUEST_CODE = 0; // 请求码
-    // 所需的全部权限
-    static final String[] PERMISSIONS = new String[]{
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.MODIFY_AUDIO_SETTINGS,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.INTERNET,
-            Manifest.permission.CAMERA
-    };
     ///////////////////////////////////////////////////
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -178,7 +174,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }
     }
 
-    private void stop() {
+    public static void stop() {
         isPublished = false;
 
         mRtmpPublisher.stop();
