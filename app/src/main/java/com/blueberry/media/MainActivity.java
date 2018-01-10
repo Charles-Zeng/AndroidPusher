@@ -19,6 +19,7 @@ import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.media.MediaRecorder;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
@@ -71,20 +72,19 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     private Camera.Size previewSize;
     private Context mContext;
     private long presentationTimeUs;
-    static MediaCodec vencoder;
-    private static Thread recordThread;
-    private static boolean aLoop;
-    private Activity act;
-    private static AudioRecord mAudioRecord;
+    private MediaCodec vencoder;
+    private Thread recordThread;
+    private boolean aLoop;
+    private AudioRecord mAudioRecord;
     private byte[] aBuffer;
-    private static MediaCodec aencoder;
+    private MediaCodec aencoder;
     private int aSampleRate;
     private int aChanelCount;
     private int colorFormat;
     private MediaCodec.BufferInfo aBufferInfo = new MediaCodec.BufferInfo();
     private MediaCodec.BufferInfo vBufferInfo = new MediaCodec.BufferInfo();
-    private static boolean isPublished;
-    private static RtmpPublisher mRtmpPublisher = new RtmpPublisher();
+    private boolean isPublished = false;
+    private RtmpPublisher mRtmpPublisher = new RtmpPublisher();
     ////////////////////以下获取摄像头权限////////////
     private static final int REQUEST_CODE = 0; // 请求码
     ///////////////////////////////////////////////////
@@ -97,12 +97,12 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     }
 
     private void initView() {
-        btnToggle = (Button) findViewById(R.id.btn_toggle);
+        //btnToggle = (Button) findViewById(R.id.btn_toggle);
         mSurfaceView = (SurfaceView) findViewById(R.id.surface_view);
         mSurfaceView.setKeepScreenOn(true);
         mSurfaceHolder = mSurfaceView.getHolder();
         mSurfaceHolder.addCallback(this);
-        btnToggle.setOnClickListener(new View.OnClickListener() {
+        /*btnToggle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //检查是否授予了摄像头的权限
@@ -117,9 +117,9 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                     switchPublish();
                 }
             }
-        });
+        });*/
     }
-    private void switchPublish() {
+    public void switchPublish() {
         if (isPublished) {
             stop();
         } else {
@@ -130,6 +130,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     }
 
     private void start() {
+        Log.i(TAG, "开始采集");
         //初始化
         String testStr = "rtmp://";
         testStr += GlobalContextValue.VideoServiceIP;
@@ -142,7 +143,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             return;
         }
 
-        isPublished = true;
+        //isPublished = true;
         initAudioDevice();
 
         try {
@@ -172,9 +173,12 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         if (vencoder != null) {
             vencoder.start();
         }
+
+        isPublished = true;
     }
 
-    public static void stop() {
+    private void stop() {
+        Log.i(TAG, "停止采集");
         isPublished = false;
 
         mRtmpPublisher.stop();
@@ -422,6 +426,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     protected void onResume() {
         super.onResume();
         initCamera();
+        DataSource.getInstance().setActivity(this);
+        start();
     }
 
     @Override

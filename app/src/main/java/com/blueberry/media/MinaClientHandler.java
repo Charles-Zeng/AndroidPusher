@@ -47,6 +47,8 @@ public class MinaClientHandler extends IoHandlerAdapter {
         }else
         {
             //接受到服务器发送过来的控制命令，分为START和STOP两种操作命令
+            Log.i("TEST","收到控制命令 " + msg);
+            DataSource.getInstance().switchPush();
         }
     }
 

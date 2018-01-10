@@ -43,7 +43,7 @@ public class SocketClientSender{
                 if(ReqRepType.equals("CMD"))
                 {
                     //20180108 添加控制mainact中的停止开关实现
-                    MainActivity.stop();
+                    //MainActivity.stop();
                 }else
                 {
                     continue;
