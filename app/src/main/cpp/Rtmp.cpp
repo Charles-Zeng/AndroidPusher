@@ -225,7 +225,7 @@ int Rtmp::sendAacData(BYTE *data, int len, long timeOffset) {
             RTMP_SendPacket(rtmp, packet, TRUE);
         }
 
-        LOGD("send packet body[0]=%x,body[1]=%x", body[0], body[1]);
+        //LOGD("send packet body[0]=%x,body[1]=%x", body[0], body[1]);
         free(packet);
 
     }

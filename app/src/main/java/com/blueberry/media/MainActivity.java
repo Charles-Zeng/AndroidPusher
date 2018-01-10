@@ -65,12 +65,11 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     static final int NAL_FILLER = 12;
     private static final String TAG = "MainActivity";
     public static final String url = "rtmp://112.126.75.58:1935/hls/xxx";
-    private Button btnToggle;
+    private TextView StatusView;
     private SurfaceView mSurfaceView;
     private SurfaceHolder mSurfaceHolder;
     private Camera mCamera;
     private Camera.Size previewSize;
-    private Context mContext;
     private long presentationTimeUs;
     private MediaCodec vencoder;
     private Thread recordThread;
@@ -97,7 +96,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     }
 
     private void initView() {
-        //btnToggle = (Button) findViewById(R.id.btn_toggle);
+        StatusView = (TextView) findViewById(R.id.statusView);
         mSurfaceView = (SurfaceView) findViewById(R.id.surface_view);
         mSurfaceView.setKeepScreenOn(true);
         mSurfaceHolder = mSurfaceView.getHolder();
@@ -125,8 +124,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         } else {
             start();
         }
-
-        btnToggle.setText(isPublished ? "停止" : "开始");
     }
 
     private void start() {
@@ -175,10 +172,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }
 
         isPublished = true;
+        StatusView.setTextColor(this.getResources().getColor(R.color.colorAccent));
+        StatusView.setText("正在推流中。。。");
     }
 
     private void stop() {
         Log.i(TAG, "停止采集");
+        StatusView.setText("停止推流中。。。");
         isPublished = false;
 
         mRtmpPublisher.stop();
@@ -192,6 +192,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         vencoder.release();
         aencoder.stop();
         aencoder.release();
+        StatusView.setTextColor(this.getResources().getColor(R.color.colorAccent));
     }
 
 

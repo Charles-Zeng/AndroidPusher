@@ -17,6 +17,7 @@ public class MinaClientHandler extends IoHandlerAdapter {
     public void exceptionCaught(IoSession session, Throwable cause) throws Exception {
         Log.i("TEST", "客户端发生异常");
         super.exceptionCaught(session, cause);
+        Log.i("TEST", cause.getMessage());
     }
     @Override
     public void sessionOpened(IoSession session) throws Exception {
@@ -30,16 +31,16 @@ public class MinaClientHandler extends IoHandlerAdapter {
         Log.i("TEST", "i客户端接收到的信息为:" + msg);
         super.messageReceived(session, message);
         JSONObject PraseServiceRep = new JSONObject(message.toString());
-        String RespType = PraseServiceRep.getString("TYPE");
-        if(RespType.equals("LOGIN"))
+        String RespType = PraseServiceRep.getString("Type");
+        if(RespType.equals("LoginResp"))
         {
             //解析登陆返回类型，如果返回的是登陆成功，那么久开始发送心跳
-            String PraseLoginResp = PraseServiceRep.getString("LoginRep");
-            if(PraseLoginResp.equals("LOGIN_OK"))
+            String PraseLoginResp = PraseServiceRep.getString("Status");
+            if(PraseLoginResp.equals("Ok"))
             {
                 session.write(BuildHeartPacket());
             }
-        }else if(RespType.equals("HEART"))
+        }else if(RespType.equals("Heart"))
         {
             //如果返回的是心跳，那么继续发送心跳
             session.write(BuildHeartPacket());
@@ -61,8 +62,13 @@ public class MinaClientHandler extends IoHandlerAdapter {
     public String BuildLoginPacket() throws JSONException
     {
         JSONObject LoginPacket = new JSONObject();
-        LoginPacket.put("RequsetTpye","Login");
-        LoginPacket.put("name","name");
+        LoginPacket.put("Type","Login");
+        LoginPacket.put("UserName",GlobalContextValue.UserName);
+        LoginPacket.put("UserPwd",GlobalContextValue.UserPwd);
+        LoginPacket.put("ServiceName",GlobalContextValue.ServiceName);
+        LoginPacket.put("Mac",GlobalContextValue.DeviceMacAddress);
+        LoginPacket.put("Imei",GlobalContextValue.DeviceIMEI);
+        LoginPacket.put("Gps",GlobalContextValue.DeviceGPS);
         System.out.print(LoginPacket);
         return LoginPacket.toString();
     }
@@ -70,7 +76,7 @@ public class MinaClientHandler extends IoHandlerAdapter {
     public String BuildHeartPacket() throws JSONException
     {
         JSONObject HeartPacket = new JSONObject();
-        HeartPacket.put("RequsetTpye","Heart");
+        HeartPacket.put("Type","Heart");
         System.out.print(HeartPacket);
         return HeartPacket.toString();
     }

@@ -1,25 +1,30 @@
 package com.blueberry.media;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.location.Criteria;
+import android.location.LocationManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
+import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import java.io.BufferedReader;
+import android.widget.Toast;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.LineNumberReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 /**
  * Created by liyong on 2018/1/4.
@@ -52,6 +57,11 @@ public class LoginActivity extends Activity {
             //初始化从界面上获取的值
             GetInputData();
             registerBroadcast();
+            //判断输入值是否为空
+            if(!ValueIsEmpty())
+            {
+                return;
+            }
             //建立socket通信
             setSocket();
             //跳转到页面实现
@@ -82,60 +92,49 @@ public class LoginActivity extends Activity {
         VedioServiceIP = (EditText) findViewById(R.id.edittextVedioIP);
         // 获得文本框中的用户
         vedioserviceip = VedioServiceIP.getText().toString().trim();
-
         //从界面上的值获取下来存放在全局类中存放
         GlobalContextValue.ServiceIP = serviceip;
         GlobalContextValue.UserName = user;
         GlobalContextValue.UserPwd = pwd;
         GlobalContextValue.ServiceName = servicename;
         GlobalContextValue.VideoServiceIP = vedioserviceip;
+        GlobalContextValue.DeviceMacAddress = getMac();
+        GlobalContextValue.DeviceIMEI = getIMEI();
     }
 
     private void setSocket() {
         MinaThread mThread = new MinaThread();
         mThread.start();
             }
-    /*class tcpClient extends Thread {
-        public void run() {
-            String recv;
-            try {
-                Socket ConSocket = new Socket();
-                //创建套接字地址，其中 IP 地址为通配符地址，端口号为指定值。
-                //有效端口值介于 0 和 65535 之间。端口号 zero 允许系统在 bind 操作中挑选暂时的端口。
-                isa = new InetSocketAddress(serviceip, 9800);
-                //建立一个远程链接
-                ConSocket.connect(isa);
-                //socket.connect(isa);
-                socket = ConSocket;
-                if (socket.isConnected()) {
-
-                }
-                //向服务器发送命令
-                writer = new BufferedWriter(new OutputStreamWriter(
-                        socket.getOutputStream()));
-                System.out.println("发送消息");
-                writer.write("嘿嘿，你好啊，服务器.."); // 写一个UTF-8的信息
-                writer.flush();
-                //等待，接收来自服务器返回的消息
-                BufferedReader reader = new BufferedReader(new InputStreamReader(
-                        socket.getInputStream()));
-                String line;
-                String txt = "";
-                while ((line = reader.readLine()) != null) {
-                    txt += line + "\n";
-                }
-                reader.close();
-                recv = txt;
-                if (recv != null) {
-                    System.out.print(recv);
-                }
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    private boolean ValueIsEmpty()
+    {
+        //判断IP输入框是否为空
+        if(serviceip.isEmpty()){
+            Toast.makeText(LoginActivity.this,"请输入服务器IP地址", Toast.LENGTH_LONG).show();
+            return false;
         }
-    }*/
+        //判断IP输入框是否为空
+        if(user.isEmpty()){
+            Toast.makeText(LoginActivity.this,"请输入用户名", Toast.LENGTH_LONG).show();
+            return false;
+        }
+        //判断IP输入框是否为空
+        if(pwd.isEmpty()){
+            Toast.makeText(LoginActivity.this,"请输入密码", Toast.LENGTH_LONG).show();
+            return false;
+        }
+        //判断IP输入框是否为空
+        if(servicename.isEmpty()){
+            Toast.makeText(LoginActivity.this,"请输入服务名称", Toast.LENGTH_LONG).show();
+            return false;
+        }
+        //判断IP输入框是否为空
+        if(vedioserviceip.isEmpty()){
+            Toast.makeText(LoginActivity.this,"请输入视频转发IP地址", Toast.LENGTH_LONG).show();
+            return false;
+        }
+        return true;
+    }
     private void registerBroadcast() {
         receiver = new MessageBroadcastReceiver();
         IntentFilter filter = new IntentFilter("com.commonlibrary.mina.broadcast");
@@ -147,5 +146,62 @@ public class LoginActivity extends Activity {
 
             //receive_tv.setText(intent.getStringExtra("message"));
         }
+    }
+    //获取本机mac地址
+    /**
+     * 这是使用adb shell命令来获取mac地址的方式
+     * @return
+     */
+    public static String getMac() {
+        String macSerial = null;
+        String str = "";
+
+        try {
+            Process pp = Runtime.getRuntime().exec("cat /sys/class/net/wlan0/address ");
+            InputStreamReader ir = new InputStreamReader(pp.getInputStream());
+            LineNumberReader input = new LineNumberReader(ir);
+
+            for (; null != str; ) {
+                str = input.readLine();
+                if (str != null) {
+                    macSerial = str.trim();// 去空格
+                    break;
+                }
+            }
+        } catch (IOException ex) {
+            // 赋予默认值
+            ex.printStackTrace();
+        }
+        return macSerial;
+    }
+    //获取本机IMEI号
+    public String getIMEI() {
+        String IMEISerial = null;
+        TelephonyManager tm = (TelephonyManager) this.getSystemService(TELEPHONY_SERVICE);
+        /*
+        * 唯一的设备ID：
+        * GSM手机的 IMEI 和 CDMA手机的 MEID.
+        * Return null if device ID is not available.
+        */
+        int permission = ActivityCompat.checkSelfPermission(LoginActivity.this, Manifest.permission.READ_PHONE_STATE);
+        if(permission == PackageManager.PERMISSION_GRANTED)
+        {
+            IMEISerial = tm.getDeviceId();
+        }
+        return IMEISerial;
+    }
+    //获取本机GPS位置
+    public String getGPS() {
+        String GPSStrInfo = null;
+        LocationManager mLocationManager =(LocationManager) this.getSystemService (Context.LOCATION_SERVICE);
+        Criteria mCriteria = new Criteria();
+        mCriteria.setAccuracy(Criteria.ACCURACY_FINE);//高精度
+        mCriteria.setAltitudeRequired(true);//包含高度信息
+        mCriteria.setBearingRequired(true);//包含方位信息
+        mCriteria.setSpeedRequired(true);//包含速度信息
+        mCriteria.setCostAllowed(true);//允许付费
+        mCriteria.setPowerRequirement(Criteria.POWER_HIGH);//高耗电
+        mLocationManager.getBestProvider(mCriteria,true);
+        return GPSStrInfo;
     }
 }

@@ -1,14 +1,15 @@
 package com.blueberry.media;
 
-import android.support.v7.app.AppCompatActivity;
+import android.os.Handler;
+import android.os.Looper;
 
 /**
  * Created by CharlesZeng on 2018-01-10.
  */
 
-public class DataSource {
+public class DataSource extends Handler {
 
-    static private DataSource instance = new DataSource();
+    static private volatile  DataSource instance = new DataSource();
 
     private int count = 0;
     //private boolean pushStatus = false;
@@ -19,17 +20,20 @@ public class DataSource {
         return instance;
     }
 
+    private DataSource() {
+        super(Looper.getMainLooper());
+    }
+
     void setActivity(MainActivity activity){
         this.activity = activity;
     }
 
     void switchPush(){
-        activity.switchPublish();
-        /*++count;
-        if (count % 5 == 0){
-            if (activity != null){
+        post(new Runnable() {
+            @Override
+            public void run() {
                 activity.switchPublish();
             }
-        }*/
+        });
     }
 }
