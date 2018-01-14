@@ -487,7 +487,11 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                             //http://blog.csdn.net/jumper511/article/details/21719313
                             //这样处理的话颜色核能会有些失真。
                             Yuv420Util.Nv21ToYuv420SP(data, dstByte, previewSize.width, previewSize.height);
-                        } else {
+                        } else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar){
+                            //华为colorFormat=39
+                            Yuv420Util.Nv21ToYuv420SP(data, dstByte, previewSize.width, previewSize.height);
+                        }
+                        else {
                             System.arraycopy(data, 0, dstByte, 0, data.length);
                         }
                         onGetVideoFrame(dstByte);
