@@ -13,12 +13,12 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.TelephonyManager;
-import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -47,6 +47,7 @@ public class LoginActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+        SysApplication.getInstance().addActivity(this);
         my_button = (Button)findViewById(R.id.btn_login);
         my_button.setText( "登陆" );
         my_button.setOnClickListener(new MyButtonListener());
@@ -56,7 +57,7 @@ public class LoginActivity extends Activity {
             // TODO Auto-generated method stub
             //初始化从界面上获取的值
             GetInputData();
-            registerBroadcast();
+            //registerBroadcast();
             //判断输入值是否为空
             if(!ValueIsEmpty())
             {
