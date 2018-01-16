@@ -20,11 +20,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.Socket;
+import java.net.SocketException;
 
 /**
  * Created by liyong on 2018/1/4.
@@ -99,8 +98,9 @@ public class LoginActivity extends Activity {
         GlobalContextValue.UserPwd = pwd;
         GlobalContextValue.ServiceName = servicename;
         GlobalContextValue.VideoServiceIP = vedioserviceip;
-        //GlobalContextValue.DeviceMacAddress = getMac();
-        //GlobalContextValue.DeviceIMEI = getIMEI();
+        GlobalContextValue.DeviceMacAddress = getMac();
+        GlobalContextValue.DeviceIMEI = getIMEI();
+        GlobalContextValue.DeviceBrand = getDeviceBrand();
     }
 
     private void setSocket() {
@@ -154,26 +154,30 @@ public class LoginActivity extends Activity {
      * @return
      */
     public static String getMac() {
-        String macSerial = null;
-        String str = "";
-
+        String macAddress = null;
+        StringBuffer buf = new StringBuffer();
+        NetworkInterface networkInterface = null;
         try {
-            Process pp = Runtime.getRuntime().exec("cat /sys/class/net/wlan0/address ");
-            InputStreamReader ir = new InputStreamReader(pp.getInputStream());
-            LineNumberReader input = new LineNumberReader(ir);
-
-            for (; null != str; ) {
-                str = input.readLine();
-                if (str != null) {
-                    macSerial = str.trim();// 去空格
-                    break;
-                }
+            networkInterface = NetworkInterface.getByName("eth1");
+            if (networkInterface == null) {
+                networkInterface = NetworkInterface.getByName("wlan0");
             }
-        } catch (IOException ex) {
-            // 赋予默认值
-            ex.printStackTrace();
+            if (networkInterface == null) {
+                return "02:00:00:00:00:02";
+            }
+            byte[] addr = networkInterface.getHardwareAddress();
+            for (byte b : addr) {
+                buf.append(String.format("%02X:", b));
+            }
+            if (buf.length() > 0) {
+                buf.deleteCharAt(buf.length() - 1);
+            }
+            macAddress = buf.toString();
+        } catch (SocketException e) {
+            e.printStackTrace();
+            return "02:00:00:00:00:02";
         }
-        return macSerial;
+        return macAddress;
     }
     //获取本机IMEI号
     public String getIMEI() {
@@ -204,5 +208,10 @@ public class LoginActivity extends Activity {
         mCriteria.setPowerRequirement(Criteria.POWER_HIGH);//高耗电
         mLocationManager.getBestProvider(mCriteria,true);
         return GPSStrInfo;
+    }
+
+    //获取本机GPS位置
+    public String getDeviceBrand() {
+        return android.os.Build.BRAND;
     }
 }

@@ -14,5 +14,6 @@ public class GlobalContextValue {
     public static  String DeviceMacAddress; //设备MAC地址
     public static  String DeviceIMEI; //设备MAC地址
     public static  String DeviceGPS; //设备MAC地址
+    public static  String DeviceBrand; //手机厂商
 }
 
