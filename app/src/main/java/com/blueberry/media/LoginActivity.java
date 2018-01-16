@@ -99,8 +99,8 @@ public class LoginActivity extends Activity {
         GlobalContextValue.UserPwd = pwd;
         GlobalContextValue.ServiceName = servicename;
         GlobalContextValue.VideoServiceIP = vedioserviceip;
-        GlobalContextValue.DeviceMacAddress = getMac();
-        GlobalContextValue.DeviceIMEI = getIMEI();
+        //GlobalContextValue.DeviceMacAddress = getMac();
+        //GlobalContextValue.DeviceIMEI = getIMEI();
     }
 
     private void setSocket() {
