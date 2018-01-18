@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         testStr += GlobalContextValue.VideoServiceIP;
         testStr += ":1935/hls/";
         testStr += GlobalContextValue.ServiceName;
-        int ret = mRtmpPublisher.init(testStr, previewSize.width, previewSize.height, 5);
+        int ret = mRtmpPublisher.init(testStr, GlobalContextValue.width, GlobalContextValue.height, 5);
 
         if (ret < 0) {
             Log.e(TAG, "连接失败");
@@ -252,10 +252,12 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         colorFormat = getColorFormat(mediaCodecInfo);
         MediaCodec vencoder = MediaCodec.createByCodecName(mediaCodecInfo.getName());
         MediaFormat format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC,
-                previewSize.width, previewSize.height);
+                GlobalContextValue.width, GlobalContextValue.height);
         format.setInteger(KEY_MAX_INPUT_SIZE, 0);
         format.setInteger(KEY_BIT_RATE, 700 * 1000);
-        if(GlobalContextValue.DeviceBrand == "Huawei")
+        //匹配华为手机和荣耀手机的厂商名字
+        if(GlobalContextValue.DeviceBrand.equalsIgnoreCase("huawei")
+                ||    GlobalContextValue.DeviceBrand.equalsIgnoreCase("honor"))
         {
             format.setInteger(KEY_COLOR_FORMAT, 21);
             Log.i(KEY_COLOR_FORMAT, String.format("KEY_COLOR_FORMAT DeviceBrand=%s", GlobalContextValue.DeviceBrand));
@@ -323,7 +325,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     }
 
     private int calculateFrameSize(int format) {
-        return previewSize.width * previewSize.height * ImageFormat.getBitsPerPixel(format) / 8;
+        return GlobalContextValue.width * GlobalContextValue.height * ImageFormat.getBitsPerPixel(format) / 8;
     }
 
     public static void setCameraDisplayOrientation(Activity activity,
@@ -367,7 +369,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 ) {
             if (size.width >= 320 && size.width <= 720) {
                 previewSize = size;
-                Log.d(TAG, String.format("find preview size width=%d,height=%d", previewSize.width,
+                Log.i(TAG, String.format("find preview size width=%d,height=%d", previewSize.width,
                         previewSize.height));
                 break;
             }
@@ -384,7 +386,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             }
         }
 
-        parameters.setPreviewSize(previewSize.width, previewSize.height);
+        parameters.setPreviewSize(GlobalContextValue.width, GlobalContextValue.height);
         parameters.setPreviewFpsRange(destRange[PREVIEW_FPS_MIN_INDEX],
                 destRange[PREVIEW_FPS_MAX_INDEX]);
         parameters.setFocusMode(FOCUS_MODE_AUTO);
@@ -477,11 +479,11 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                     if (isPublished) {
                         // data 是Nv21
                         if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar) {
-                            Yuv420Util.Nv21ToYuv420SP(data, dstByte, previewSize.width, previewSize.height);
+                            Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
                             //Log.d(TAG, "colorFormat: COLOR_FormatYUV420SemiPlanar");
                             Log.i(TAG, String.format("colorFormatNv21ToYuv420SP-1=%s", colorFormat));
                         } else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar) {
-                            Yuv420Util.Nv21ToI420(data, dstByte, previewSize.width, previewSize.height);
+                            Yuv420Util.Nv21ToI420(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
                             //Log.d(TAG, "colorFormat: COLOR_FormatYUV420Planar");
                             Log.i(TAG, String.format("colorFormatNv21ToI420-2=%s", colorFormat));
                         } else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible) {
@@ -490,17 +492,17 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         } else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar) {
                             //http://blog.csdn.net/jumper511/article/details/21719313
                             //这样处理的话颜色核能会有些失真。
-                            Yuv420Util.Nv21ToYuv420SP(data, dstByte, previewSize.width, previewSize.height);
+                            Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
                             Log.i(TAG, String.format("colorFormatNv21ToYuv420SP-3=%s", colorFormat));
                             //Log.d(TAG, "colorFormat: COLOR_FormatYUV420PackedPlanar");
                         }  else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar){
                             //华为colorFormat=39
-                            Yuv420Util.Nv21ToYuv420SP(data, dstByte, previewSize.width, previewSize.height);
+                            Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
                             Log.i(TAG, String.format("colorFormatNv21ToYuv420SP-4=%s", colorFormat));
                         }
                         else {
                             //其他颜色，直接拷贝，不用转华为高版本因为U和V顺序替换了，所以交换下U和V顺序
-                            Yuv420Util.Nv21ToYuv420SPHigher(data, dstByte, previewSize.width, previewSize.height);
+                            Yuv420Util.Nv21ToYuv420SPHigher(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
                             Log.i(TAG, String.format("colorFormatNv21ToYuv420SP-5=%s", colorFormat));
                             //System.arraycopy(data, 0, dstByte, 0, data.length);
                         }

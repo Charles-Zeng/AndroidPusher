@@ -2,16 +2,14 @@ package com.blueberry.media;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.hardware.Camera;
 import android.location.Criteria;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.TelephonyManager;
 import android.view.View;
 import android.widget.Button;
@@ -19,10 +17,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedWriter;
-import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
-import java.net.Socket;
 import java.net.SocketException;
 
 /**
@@ -33,30 +28,40 @@ public class LoginActivity extends Activity {
     private Button my_button = null;
     private EditText ServiceIP, username,password,ServiceName, VedioServiceIP;
     private String serviceip, user, pwd, servicename,vedioserviceip;
-    private TextView log;
-    public static final int CONNENTED = 0;
-    public static final int UPDATALOG = 1;
-    private Socket socket;
-    private BufferedWriter writer;
-    private InetSocketAddress isa = null;
-    private String logMsg;
     private static final String TAG = "LoginActivity";
-    private MessageBroadcastReceiver receiver;
+    //新增dialog界面显示摄像头分辨率
+    private FVDialog fvDialog;
+    private TextView ej_tv_title;
+    private Camera.Size mSize;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         SysApplication.getInstance().addActivity(this);
+        ej_tv_title = (TextView) findViewById(R.id.ej_tv_title);
         my_button = (Button)findViewById(R.id.btn_login);
         my_button.setText( "登陆" );
         my_button.setOnClickListener(new MyButtonListener());
+        //创建对话框显示摄像头支持分辨率
+        fvDialog = new FVDialog(this, new FVDialog.FVDialogListener() {
+            @Override
+            public void fVListener(Camera.Size size) {
+                ej_tv_title.setText(size.width+"*"+size.height);
+                mSize = size;
+            }
+        });
+        findViewById(R.id.lv_ll_fv).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                fvDialog.show();
+            }
+        });
     }
     class MyButtonListener implements View.OnClickListener {
         public void onClick(View v) {
             // TODO Auto-generated method stub
             //初始化从界面上获取的值
             GetInputData();
-            //registerBroadcast();
             //判断输入值是否为空
             if(!ValueIsEmpty())
             {
@@ -74,23 +79,18 @@ public class LoginActivity extends Activity {
     private void GetInputData() {
         //服务器ip地址获取
         ServiceIP = (EditText) findViewById(R.id.edittextSerIP);
-        // 获得文本框中的用户
         serviceip = ServiceIP.getText().toString().trim();
         //用户名获取
         username = (EditText) findViewById(R.id.edittextName);
-        // 获得文本框中的用户
         user = username.getText().toString().trim();
         //密码获取
         password = (EditText) findViewById(R.id.edittextPass);
-        // 获得文本框中的用户
         pwd = password.getText().toString().trim();
         //服务名称
         ServiceName = (EditText) findViewById(R.id.edittextSerName);
-        // 获得文本框中的用户
         servicename = ServiceName.getText().toString().trim();
         //视频转发服务器的地址获取
         VedioServiceIP = (EditText) findViewById(R.id.edittextVedioIP);
-        // 获得文本框中的用户
         vedioserviceip = VedioServiceIP.getText().toString().trim();
         //从界面上的值获取下来存放在全局类中存放
         GlobalContextValue.ServiceIP = serviceip;
@@ -101,6 +101,8 @@ public class LoginActivity extends Activity {
         GlobalContextValue.DeviceMacAddress = getMac();
         GlobalContextValue.DeviceIMEI = getIMEI();
         GlobalContextValue.DeviceBrand = getDeviceBrand();
+        GlobalContextValue.width = mSize.width;
+        GlobalContextValue.height = mSize.height;
     }
 
     private void setSocket() {
@@ -114,39 +116,32 @@ public class LoginActivity extends Activity {
             Toast.makeText(LoginActivity.this,"请输入服务器IP地址", Toast.LENGTH_LONG).show();
             return false;
         }
-        //判断IP输入框是否为空
+        //判断用户名输入框是否为空
         if(user.isEmpty()){
             Toast.makeText(LoginActivity.this,"请输入用户名", Toast.LENGTH_LONG).show();
             return false;
         }
-        //判断IP输入框是否为空
+        //判断密码输入框是否为空
         if(pwd.isEmpty()){
             Toast.makeText(LoginActivity.this,"请输入密码", Toast.LENGTH_LONG).show();
             return false;
         }
-        //判断IP输入框是否为空
+        //判断服务名输入框是否为空
         if(servicename.isEmpty()){
             Toast.makeText(LoginActivity.this,"请输入服务名称", Toast.LENGTH_LONG).show();
             return false;
         }
-        //判断IP输入框是否为空
+        //判断视频转发地址输入框是否为空
         if(vedioserviceip.isEmpty()){
             Toast.makeText(LoginActivity.this,"请输入视频转发IP地址", Toast.LENGTH_LONG).show();
             return false;
         }
-        return true;
-    }
-    private void registerBroadcast() {
-        receiver = new MessageBroadcastReceiver();
-        IntentFilter filter = new IntentFilter("com.commonlibrary.mina.broadcast");
-        LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter);
-    }
-    private class MessageBroadcastReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-
-            //receive_tv.setText(intent.getStringExtra("message"));
+        //判断摄像头分辨率是否为空
+        if(GlobalContextValue.height == 0 | GlobalContextValue.width == 0){
+            Toast.makeText(LoginActivity.this,"请选择摄像头分辨率", Toast.LENGTH_LONG).show();
+            return false;
         }
+        return true;
     }
     //获取本机mac地址
     /**
@@ -209,8 +204,7 @@ public class LoginActivity extends Activity {
         mLocationManager.getBestProvider(mCriteria,true);
         return GPSStrInfo;
     }
-
-    //获取本机GPS位置
+    //获取本机制造厂商
     public String getDeviceBrand() {
         return android.os.Build.BRAND;
     }
