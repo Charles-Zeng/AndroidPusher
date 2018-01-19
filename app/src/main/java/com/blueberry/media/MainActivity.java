@@ -15,6 +15,7 @@ import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.media.MediaRecorder;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -57,7 +58,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     static final int NAL_AUD = 9;
     static final int NAL_FILLER = 12;
     private static final String TAG = "MainActivity";
-    public static final String url = "rtmp://112.126.75.58:1935/hls/xxx";
     private TextView StatusView;
     private SurfaceView mSurfaceView;
     private SurfaceHolder mSurfaceHolder;
@@ -111,6 +111,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 }
             }
         });*/
+        //测试5分钟是否能够关闭推流
+        handler.postDelayed(runnable, 300000);//5分钟后执行一次runnable.
     }
     public void switchPublish() {
         if (isPublished) {
@@ -187,6 +189,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         aencoder.stop();
         aencoder.release();
         StatusView.setTextColor(this.getResources().getColor(R.color.colorAccent));
+        //关闭定时器，只需执行一次
+        handler.removeCallbacks(runnable);
     }
 
 
@@ -481,29 +485,29 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar) {
                             Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
                             //Log.d(TAG, "colorFormat: COLOR_FormatYUV420SemiPlanar");
-                            Log.i(TAG, String.format("colorFormatNv21ToYuv420SP-1=%s", colorFormat));
+                            Log.d(TAG, String.format("colorFormatNv21ToYuv420SP-1=%s", colorFormat));
                         } else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar) {
                             Yuv420Util.Nv21ToI420(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
                             //Log.d(TAG, "colorFormat: COLOR_FormatYUV420Planar");
-                            Log.i(TAG, String.format("colorFormatNv21ToI420-2=%s", colorFormat));
+                            Log.d(TAG, String.format("colorFormatNv21ToI420-2=%s", colorFormat));
                         } else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible) {
                             // Yuv420_888
-                            Log.i(TAG, String.format("colorFormat=%s", colorFormat));
+                            Log.d(TAG, String.format("colorFormat=%s", colorFormat));
                         } else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar) {
                             //http://blog.csdn.net/jumper511/article/details/21719313
                             //这样处理的话颜色核能会有些失真。
                             Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
-                            Log.i(TAG, String.format("colorFormatNv21ToYuv420SP-3=%s", colorFormat));
+                            Log.d(TAG, String.format("colorFormatNv21ToYuv420SP-3=%s", colorFormat));
                             //Log.d(TAG, "colorFormat: COLOR_FormatYUV420PackedPlanar");
                         }  else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar){
                             //华为colorFormat=39
                             Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
-                            Log.i(TAG, String.format("colorFormatNv21ToYuv420SP-4=%s", colorFormat));
+                            Log.d(TAG, String.format("colorFormatNv21ToYuv420SP-4=%s", colorFormat));
                         }
                         else {
                             //其他颜色，直接拷贝，不用转华为高版本因为U和V顺序替换了，所以交换下U和V顺序
                             Yuv420Util.Nv21ToYuv420SPHigher(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
-                            Log.i(TAG, String.format("colorFormatNv21ToYuv420SP-5=%s", colorFormat));
+                            Log.d(TAG, String.format("colorFormatNv21ToYuv420SP-5=%s", colorFormat));
                             //System.arraycopy(data, 0, dstByte, 0, data.length);
                         }
                         onGetVideoFrame(dstByte);
@@ -609,34 +613,9 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         // 1.界定符 FF F1
         // 2.加上界定符的前7个字节是帧描述信息
         // 3.AudioDecoderSpecificInfo 长度为2个字节如果是44100 改值为0x1210
-
         //http://blog.csdn.net/avsuper/article/details/24661533
         //http://www.tuicool.com/articles/aYvmua
-
-
         if (aBufferInfo.size == 2) {
-//            https://my.oschina.net/zhangxu0512/blog/204070
-//            faacEncSetConfiguration(m_hEncoder, pConfiguration);
-//            int ret = faacEncGetDecoderSpecificInfo(m_hEncoder, &m_pSpc, &m_nSpc);
-
-//            //AAC sequence header
-//            int[] mpeg4audio_sample_rates = {
-//                    96000, 88200, 64000, 48000, 44100, 32000,
-//                    24000, 22050, 16000, 12000, 11025, 8000, 7350
-//            };
-//
-//            int m_keyframe[] = new int[2];
-//            //get keyframe info.
-//            int index;
-//            for (index = 0; index < 16; index++) {
-//                if (aSampleRate == mpeg4audio_sample_rates[index]) {
-//                    break;
-//                }
-//            }
-//            m_keyframe[0] = 0x02 << 3 | index >> 1;
-//            m_keyframe[1] = (index & 0x01) << 7 | aChanelCount << 3;
-//
-//            Log.d(TAG,"挂件"+Arrays.toString(m_keyframe));
             // 我打印发现，这里应该已经是吧关键帧计算好了，所以我们直接发送
             byte[] bytes = new byte[2];
             bb.get(bytes);
@@ -704,4 +683,14 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
+    //实现X分钟如果没收到服务器的停止命令，就开始停止发送视频流
+    Handler handler = new Handler();
+    Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            // TODO Auto-generated method stub
+            //定时5分钟调用stop方法
+            stop();
+        }
+    };
 }

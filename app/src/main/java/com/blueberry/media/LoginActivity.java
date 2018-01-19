@@ -2,11 +2,14 @@ package com.blueberry.media;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
-import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
@@ -33,6 +36,8 @@ public class LoginActivity extends Activity {
     private FVDialog fvDialog;
     private TextView ej_tv_title;
     private Camera.Size mSize;
+    //获取gps定位
+    //定位都要通过LocationManager这个类实现
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -101,6 +106,7 @@ public class LoginActivity extends Activity {
         GlobalContextValue.DeviceMacAddress = getMac();
         GlobalContextValue.DeviceIMEI = getIMEI();
         GlobalContextValue.DeviceBrand = getDeviceBrand();
+        GlobalContextValue.DeviceGPS = getLngAndLat();
         GlobalContextValue.width = mSize.width;
         GlobalContextValue.height = mSize.height;
     }
@@ -191,21 +197,83 @@ public class LoginActivity extends Activity {
         return IMEISerial;
     }
     //获取本机GPS位置
-    public String getGPS() {
-        String GPSStrInfo = null;
-        LocationManager mLocationManager =(LocationManager) this.getSystemService (Context.LOCATION_SERVICE);
-        Criteria mCriteria = new Criteria();
-        mCriteria.setAccuracy(Criteria.ACCURACY_FINE);//高精度
-        mCriteria.setAltitudeRequired(true);//包含高度信息
-        mCriteria.setBearingRequired(true);//包含方位信息
-        mCriteria.setSpeedRequired(true);//包含速度信息
-        mCriteria.setCostAllowed(true);//允许付费
-        mCriteria.setPowerRequirement(Criteria.POWER_HIGH);//高耗电
-        mLocationManager.getBestProvider(mCriteria,true);
-        return GPSStrInfo;
+    /*** 获取经纬度** @param* @return*/
+    private String getLngAndLat() {
+        double latitude = 0.0;
+        double longitude = 0.0;
+        LocationManager locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            //从gps获取经纬度
+            int permission = ActivityCompat.checkSelfPermission(LoginActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
+            Location location = null;
+            if(permission == PackageManager.PERMISSION_GRANTED)
+            {
+                location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            }
+
+            if (location != null) {
+                latitude = location.getLatitude();
+                longitude = location.getLongitude();
+            } else {
+                //当GPS信号弱没获取到位置的时候又从网络获取
+                return getLngAndLatWithNetwork();
+            }
+        } else {
+            //从网络获取经纬度
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, locationListener);
+            Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            if (location != null) {
+                latitude = location.getLatitude();
+                longitude = location.getLongitude();
+            }
+        }
+        return longitude + "," + latitude;
     }
+    //从网络获取经纬度
+    public String getLngAndLatWithNetwork() {
+        double latitude = 0.0;
+        double longitude = 0.0;
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        int permission = ActivityCompat.checkSelfPermission(LoginActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, locationListener);
+        Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        if (location != null) {
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+        }
+        return longitude + "," + latitude;
+    }
+
+    LocationListener locationListener = new LocationListener() {
+        // Provider的状态在可用、暂时不可用和无服务三个状态直接切换时触发此函数
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+
+        }
+        // Provider被enable时触发此函数，比如GPS被打开
+        @Override
+        public void onProviderEnabled(String provider) {
+
+        }
+        // Provider被disable时触发此函数，比如GPS被关闭
+        @Override
+        public void onProviderDisabled(String provider) {
+
+        }
+        //当坐标改变时触发此函数，如果Provider传进相同的坐标，它就不会被触发
+        @Override
+        public void onLocationChanged(Location location) {
+        }
+    };
     //获取本机制造厂商
     public String getDeviceBrand() {
         return android.os.Build.BRAND;
+    }
+    public void ShowMess()
+    {
+        new AlertDialog.Builder(this).setTitle("删除提示框").setMessage("确认删除该数据？")
+                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                    }}).setNegativeButton("取消",null).show();
     }
 }
