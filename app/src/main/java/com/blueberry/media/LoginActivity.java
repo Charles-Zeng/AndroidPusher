@@ -2,9 +2,7 @@ package com.blueberry.media;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
@@ -14,6 +12,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.telephony.TelephonyManager;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -36,6 +35,11 @@ public class LoginActivity extends Activity {
     private FVDialog fvDialog;
     private TextView ej_tv_title;
     private Camera.Size mSize;
+    //摄像头预览高度,宽度
+    private int height = 0;
+    private int width = 0;
+    //获取到的停止时间秒数
+    public int StopPushVideoSec;
     //获取gps定位
     //定位都要通过LocationManager这个类实现
     @Override
@@ -53,6 +57,8 @@ public class LoginActivity extends Activity {
             public void fVListener(Camera.Size size) {
                 ej_tv_title.setText(size.width+"*"+size.height);
                 mSize = size;
+                height = size.height;
+                width = size.width;
             }
         });
         findViewById(R.id.lv_ll_fv).setOnClickListener(new View.OnClickListener() {
@@ -74,11 +80,12 @@ public class LoginActivity extends Activity {
             }
             //建立socket通信
             setSocket();
-            //跳转到页面实现
-            Intent intent = new Intent();
-            intent.setClass(LoginActivity.this, MainActivity.class);
-            LoginActivity.this.startActivity(intent);
         }
+    }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        LoginValidation.getInstance().setActivity(this);
     }
     //获取界面输入信息
     private void GetInputData() {
@@ -106,9 +113,16 @@ public class LoginActivity extends Activity {
         GlobalContextValue.DeviceMacAddress = getMac();
         GlobalContextValue.DeviceIMEI = getIMEI();
         GlobalContextValue.DeviceBrand = getDeviceBrand();
-        GlobalContextValue.DeviceGPS = getLngAndLat();
-        GlobalContextValue.width = mSize.width;
-        GlobalContextValue.height = mSize.height;
+        //GlobalContextValue.DeviceGPS = getLngAndLat();
+        //判断摄像头分辨率是否为空
+        if(0 == height || 0 == width){
+            Toast.makeText(LoginActivity.this,"请选择摄像头分辨率", Toast.LENGTH_LONG).show();
+            return ;
+        }else
+        {
+            GlobalContextValue.width = mSize.width;
+            GlobalContextValue.height = mSize.height;
+        }
     }
 
     private void setSocket() {
@@ -140,11 +154,6 @@ public class LoginActivity extends Activity {
         //判断视频转发地址输入框是否为空
         if(vedioserviceip.isEmpty()){
             Toast.makeText(LoginActivity.this,"请输入视频转发IP地址", Toast.LENGTH_LONG).show();
-            return false;
-        }
-        //判断摄像头分辨率是否为空
-        if(GlobalContextValue.height == 0 | GlobalContextValue.width == 0){
-            Toast.makeText(LoginActivity.this,"请选择摄像头分辨率", Toast.LENGTH_LONG).show();
             return false;
         }
         return true;
@@ -269,11 +278,27 @@ public class LoginActivity extends Activity {
     public String getDeviceBrand() {
         return android.os.Build.BRAND;
     }
-    public void ShowMess()
+    //判断登陆用户密码是否正确以及接受到该用户的自动停止推流时间
+    public void ShowMess(boolean sucOrFaild,int stopPushSec, String RespMess)
     {
-        new AlertDialog.Builder(this).setTitle("删除提示框").setMessage("确认删除该数据？")
-                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                    }}).setNegativeButton("取消",null).show();
+        if (sucOrFaild)
+        {
+            //跳转到页面实现
+            Intent intent = new Intent();
+            //用Bundle携带数据
+            Bundle bundle = new Bundle();
+            //传递stopSec参数为StopPushVideoSec
+            StopPushVideoSec = stopPushSec;
+            Log.i(TAG, "ShowMess: " + stopPushSec);
+            bundle.putInt("stopSec", StopPushVideoSec);
+            intent.putExtras(bundle);
+            intent.setClass(LoginActivity.this, MainActivity.class);
+            LoginActivity.this.startActivity(intent);
+        }
+        else
+        {
+            Toast.makeText(LoginActivity.this, RespMess, Toast.LENGTH_LONG).show();
+            return;
+        }
     }
 }

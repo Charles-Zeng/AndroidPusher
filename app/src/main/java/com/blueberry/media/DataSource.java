@@ -13,7 +13,6 @@ public class DataSource extends Handler {
 
     private int count = 0;
     //private boolean pushStatus = false;
-
     private MainActivity activity = null;
 
     static public DataSource getInstance(){

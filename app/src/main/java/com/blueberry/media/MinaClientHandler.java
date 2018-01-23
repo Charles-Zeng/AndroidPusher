@@ -38,7 +38,21 @@ public class MinaClientHandler extends IoHandlerAdapter {
             String PraseLoginResp = PraseServiceRep.getString("Status");
             if(PraseLoginResp.equals("Ok"))
             {
+                //test20180122 测试验证用户密码是否成功,并且发送开始停止推流时间
+                String PraseStopPushVideoSec = PraseServiceRep.getString("AutoStopPushMinutes");
+                LoginValidation.getInstance().LoginSucOrFaild(true, 60000*Integer.parseInt(PraseStopPushVideoSec),"成功");
                 session.write(BuildHeartPacket());
+            }else
+            {
+                String RespMess = PraseServiceRep.getString("ErrorCode");
+                if (RespMess.equals("-1"))
+                {
+                    LoginValidation.getInstance().LoginSucOrFaild(false, 0, "用户密码错误！");
+                }else
+                {
+                    LoginValidation.getInstance().LoginSucOrFaild(false, 0, "服务名称已存在，请重输！");
+                }
+
             }
         }else if(RespType.equals("Heart"))
         {

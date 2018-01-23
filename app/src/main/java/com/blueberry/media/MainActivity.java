@@ -26,6 +26,9 @@ import android.view.SurfaceView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -111,8 +114,12 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 }
             }
         });*/
-        //测试5分钟是否能够关闭推流
-        handler.postDelayed(runnable, 300000);//5分钟后执行一次runnable.
+        //新页面接收数据
+        Bundle bundle = this.getIntent().getExtras();
+        //接收stopSecTime值
+        int stopSecTime = bundle.getInt("stopSec");
+        Log.i(TAG, "initView: " + stopSecTime);
+        handler.postDelayed(runnable, stopSecTime);//StopSecond秒后执行一次runnable.
     }
     public void switchPublish() {
         if (isPublished) {
@@ -176,7 +183,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         Log.i(TAG, "停止采集");
         StatusView.setText("停止推流中。。。");
         isPublished = false;
-
         mRtmpPublisher.stop();
         aLoop = false;
         if (recordThread != null) {
@@ -191,6 +197,16 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         StatusView.setTextColor(this.getResources().getColor(R.color.colorAccent));
         //关闭定时器，只需执行一次
         handler.removeCallbacks(runnable);
+        String clientStatus = "";
+        try {
+            clientStatus = BuildClientPushStatus();
+        }catch (JSONException e)
+        {
+            e.printStackTrace();
+        }
+       //客户端停止推流告诉服务器已经停止状态
+        SessionManager.getInstance().writeToServer(clientStatus);
+        Log.i(TAG, "stop: 停止后告诉服务器客户端推送的状态" + clientStatus);
     }
 
 
@@ -485,7 +501,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar) {
                             Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
                             //Log.d(TAG, "colorFormat: COLOR_FormatYUV420SemiPlanar");
-                            Log.d(TAG, String.format("colorFormatNv21ToYuv420SP-1=%s", colorFormat));
+                            //Log.d(TAG, String.format("colorFormatNv21ToYuv420SP-1=%s", colorFormat));
                         } else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar) {
                             Yuv420Util.Nv21ToI420(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
                             //Log.d(TAG, "colorFormat: COLOR_FormatYUV420Planar");
@@ -693,4 +709,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             stop();
         }
     };
+    //构建心跳包
+    public String BuildClientPushStatus() throws JSONException
+    {
+        JSONObject PushStatusPacket = new JSONObject();
+        PushStatusPacket.put("Type","StatusPush");
+        PushStatusPacket.put("Status","Stoped");
+        System.out.print(PushStatusPacket);
+        return PushStatusPacket.toString();
+    }
 }
