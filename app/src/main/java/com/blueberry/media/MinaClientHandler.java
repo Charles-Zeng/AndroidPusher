@@ -82,7 +82,7 @@ public class MinaClientHandler extends IoHandlerAdapter {
         LoginPacket.put("ServiceName",GlobalContextValue.ServiceName);
         LoginPacket.put("Mac",GlobalContextValue.DeviceMacAddress);
         LoginPacket.put("Imei",GlobalContextValue.DeviceIMEI);
-        LoginPacket.put("Gps",GlobalContextValue.DeviceGPS);
+        //LoginPacket.put("Gps",GlobalContextValue.DeviceGPS);
         System.out.print(LoginPacket);
         return LoginPacket.toString();
     }
@@ -93,5 +93,14 @@ public class MinaClientHandler extends IoHandlerAdapter {
         HeartPacket.put("Type","Heart");
         System.out.print(HeartPacket);
         return HeartPacket.toString();
+    }
+    //构建登陆的gps位置信息
+    public String BuildGpsPacket() throws JSONException
+    {
+        JSONObject GpsPacket = new JSONObject();
+        GpsPacket.put("Type","LoginGps");
+        GpsPacket.put("Gps",GlobalContextValue.DeviceGPS);
+        System.out.print(GpsPacket);
+        return GpsPacket.toString();
     }
 }

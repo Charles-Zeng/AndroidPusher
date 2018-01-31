@@ -1,5 +1,13 @@
 apply plugin: 'com.android.application'
 android {
+    signingConfigs {
+        config {
+            keyAlias 'releaseKey'
+            keyPassword '123456'
+            storeFile file('E:/InterFaceWork/andriodPublisher/gitHub/AndroidPusher/release.jks')
+            storePassword '123456'
+        }
+    }
     compileSdkVersion 24
     buildToolsVersion "24.0.2"
     defaultConfig {
@@ -21,6 +29,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.config
+        }
+        debug {
         }
     }
     externalNativeBuild {
@@ -28,15 +39,13 @@ android {
             path "src/main/cpp/CMakeLists.txt"
         }
     }
-
     sourceSets {
         main {
             jniLibs.srcDirs 'libs', '../rtmp/lib'
             java.srcDirs 'src/main/java'
             manifest.srcFile 'src/main/AndroidManifest.xml'
             res.srcDirs 'src/main/res'
-
-
+            jniLibs.srcDirs = ['libs', '../rtmp/lib']
         }
     }
 }
@@ -52,4 +61,5 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile files('libs/mina-core-2.0.16.jar')
     compile files('libs/slf4j-api-1.7.21.jar')
+    compile files('libs/BaiduLBS_Android.jar')
 }

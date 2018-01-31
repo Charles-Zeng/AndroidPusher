@@ -2,25 +2,33 @@ package com.blueberry.media;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.baidu.location.BDLocation;
+import com.baidu.location.BDLocationListener;
+import com.baidu.location.LocationClient;
+import com.baidu.location.LocationClientOption;
+import com.baidu.location.Poi;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.util.List;
 
 /**
  * Created by liyong on 2018/1/4.
@@ -28,6 +36,10 @@ import java.net.SocketException;
 
 public class LoginActivity extends Activity {
     private Button my_button = null;
+    private CheckBox checkBox; //记住用户信息
+    //声明一个SharedPreferences对象和一个Editor对象
+    private SharedPreferences preferences;
+    private SharedPreferences.Editor editor;
     private EditText ServiceIP, username,password,ServiceName, VedioServiceIP;
     private String serviceip, user, pwd, servicename,vedioserviceip;
     private static final String TAG = "LoginActivity";
@@ -42,13 +54,47 @@ public class LoginActivity extends Activity {
     public int StopPushVideoSec;
     //获取gps定位
     //定位都要通过LocationManager这个类实现
+    public LocationClient mLocationClient = null;
+    public BDLocationListener myListener = new MyLocationListener();
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         SysApplication.getInstance().addActivity(this);
         ej_tv_title = (TextView) findViewById(R.id.ej_tv_title);
+        ServiceIP = (EditText)findViewById(R.id.edittextSerIP);
+        username = (EditText)findViewById(R.id.edittextName);
+        password = (EditText)findViewById(R.id.edittextPass);
+        ServiceName = (EditText)findViewById(R.id.edittextSerName);
+        VedioServiceIP = (EditText)findViewById(R.id.edittextVedioIP);
         my_button = (Button)findViewById(R.id.btn_login);
+        checkBox = (CheckBox) findViewById(R.id.checkBox);
+        //获取preferences和editor对象
+        preferences = getSharedPreferences("UserInfo", MODE_PRIVATE);
+        editor = preferences.edit();
+        /*
+        启动程序时首先检查sharedPreferences中是否储存有用户名和密码
+        若无，则将checkbox状态显示为未选中
+        若有，则直接中sharedPreferences中读取用户名和密码，并将checkbox状态显示为已选中
+        这里getString()方法需要两个参数，第一个是键，第二个是值。
+        启动程序时我们传入需要读取的键，值填null即可。若有值则会自动显示，没有则为空。
+        */
+        serviceip = preferences.getString("serviceip",null);
+        user = preferences.getString("username", null);
+        pwd = preferences.getString("userpass", null);
+        servicename = preferences.getString("servicename", null);
+        vedioserviceip = preferences.getString("vedioserviceip", null);
+        if (serviceip == null || user == null || pwd == null || servicename == null ||vedioserviceip == null)
+        {
+            checkBox.setChecked(false);
+        } else {
+            ServiceIP.setText(serviceip);
+            username.setText(user);
+            password.setText(pwd);
+            ServiceName.setText(servicename);
+            VedioServiceIP.setText(vedioserviceip);
+            checkBox.setChecked(true);
+        }
         my_button.setText( "登陆" );
         my_button.setOnClickListener(new MyButtonListener());
         //创建对话框显示摄像头支持分辨率
@@ -71,12 +117,38 @@ public class LoginActivity extends Activity {
     class MyButtonListener implements View.OnClickListener {
         public void onClick(View v) {
             // TODO Auto-generated method stub
+            //测试获取gps地址
+            startLocate();
             //初始化从界面上获取的值
             GetInputData();
             //判断输入值是否为空
             if(!ValueIsEmpty())
             {
                 return;
+            }
+            //记住用户信息
+            String serviceip = ServiceIP.getText().toString().trim();
+            String user = username.getText().toString().trim();
+            String pwd = password.getText().toString().trim();
+            String servicename = ServiceName.getText().toString().trim();
+            String vedioserviceip = VedioServiceIP.getText().toString().trim();
+            if (checkBox.isChecked()) {
+                //如果用户选择了记住用户信息
+                //将用户输入的用户信息存入储存中，键为serviceip,username,userpass,servicename,vedioserviceip.
+                editor.putString("serviceip", serviceip);
+                editor.putString("username", user);
+                editor.putString("userpass", pwd);
+                editor.putString("servicename", servicename);
+                editor.putString("vedioserviceip", vedioserviceip);
+                editor.commit();
+            } else {
+                //否则将用户名清除
+                editor.remove("serviceip");
+                editor.remove("username");
+                editor.remove("userpass");
+                editor.remove("servicename");
+                editor.remove("vedioserviceip");
+                editor.commit();
             }
             //建立socket通信
             setSocket();
@@ -113,16 +185,6 @@ public class LoginActivity extends Activity {
         GlobalContextValue.DeviceMacAddress = getMac();
         GlobalContextValue.DeviceIMEI = getIMEI();
         GlobalContextValue.DeviceBrand = getDeviceBrand();
-        //GlobalContextValue.DeviceGPS = getLngAndLat();
-        //判断摄像头分辨率是否为空
-        if(0 == height || 0 == width){
-            Toast.makeText(LoginActivity.this,"请选择摄像头分辨率", Toast.LENGTH_LONG).show();
-            return ;
-        }else
-        {
-            GlobalContextValue.width = mSize.width;
-            GlobalContextValue.height = mSize.height;
-        }
     }
 
     private void setSocket() {
@@ -155,6 +217,15 @@ public class LoginActivity extends Activity {
         if(vedioserviceip.isEmpty()){
             Toast.makeText(LoginActivity.this,"请输入视频转发IP地址", Toast.LENGTH_LONG).show();
             return false;
+        }
+        //判断摄像头分辨率是否为空
+        if(0 == height || 0 == width){
+            Toast.makeText(LoginActivity.this,"请选择摄像头分辨率", Toast.LENGTH_LONG).show();
+            return false;
+        }else
+        {
+            GlobalContextValue.width = mSize.width;
+            GlobalContextValue.height = mSize.height;
         }
         return true;
     }
@@ -205,75 +276,6 @@ public class LoginActivity extends Activity {
         }
         return IMEISerial;
     }
-    //获取本机GPS位置
-    /*** 获取经纬度** @param* @return*/
-    private String getLngAndLat() {
-        double latitude = 0.0;
-        double longitude = 0.0;
-        LocationManager locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
-        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            //从gps获取经纬度
-            int permission = ActivityCompat.checkSelfPermission(LoginActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
-            Location location = null;
-            if(permission == PackageManager.PERMISSION_GRANTED)
-            {
-                location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            }
-
-            if (location != null) {
-                latitude = location.getLatitude();
-                longitude = location.getLongitude();
-            } else {
-                //当GPS信号弱没获取到位置的时候又从网络获取
-                return getLngAndLatWithNetwork();
-            }
-        } else {
-            //从网络获取经纬度
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, locationListener);
-            Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-            if (location != null) {
-                latitude = location.getLatitude();
-                longitude = location.getLongitude();
-            }
-        }
-        return longitude + "," + latitude;
-    }
-    //从网络获取经纬度
-    public String getLngAndLatWithNetwork() {
-        double latitude = 0.0;
-        double longitude = 0.0;
-        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        int permission = ActivityCompat.checkSelfPermission(LoginActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, locationListener);
-        Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        if (location != null) {
-            latitude = location.getLatitude();
-            longitude = location.getLongitude();
-        }
-        return longitude + "," + latitude;
-    }
-
-    LocationListener locationListener = new LocationListener() {
-        // Provider的状态在可用、暂时不可用和无服务三个状态直接切换时触发此函数
-        @Override
-        public void onStatusChanged(String provider, int status, Bundle extras) {
-
-        }
-        // Provider被enable时触发此函数，比如GPS被打开
-        @Override
-        public void onProviderEnabled(String provider) {
-
-        }
-        // Provider被disable时触发此函数，比如GPS被关闭
-        @Override
-        public void onProviderDisabled(String provider) {
-
-        }
-        //当坐标改变时触发此函数，如果Provider传进相同的坐标，它就不会被触发
-        @Override
-        public void onLocationChanged(Location location) {
-        }
-    };
     //获取本机制造厂商
     public String getDeviceBrand() {
         return android.os.Build.BRAND;
@@ -299,6 +301,119 @@ public class LoginActivity extends Activity {
         {
             Toast.makeText(LoginActivity.this, RespMess, Toast.LENGTH_LONG).show();
             return;
+        }
+    }
+    //以下代码实现获取手机gps定位
+    /*** 定位*/
+    private void startLocate() {
+        mLocationClient = new LocationClient(getApplicationContext());     //声明LocationClient类
+        mLocationClient.registerLocationListener(myListener);    //注册监听函数
+        LocationClientOption option = new LocationClientOption();
+        option.setLocationMode(LocationClientOption.LocationMode.Battery_Saving
+        );//可选，默认高精度，设置定位模式，高精度，低功耗，仅设备
+        option.setCoorType("bd09ll");//可选，默认gcj02，设置返回的定位结果坐标系
+        //int span = 1000;
+        option.setScanSpan(0);//可选，默认0，即仅定位一次，设置发起定位请求的间隔需要大于等于1000ms才是有效的
+        option.setIsNeedAddress(true);//可选，设置是否需要地址信息，默认不需要
+        option.setOpenGps(true);//可选，默认false,设置是否使用gps
+        option.setLocationNotify(true);//可选，默认false，设置是否当GPS有效时按照1S/1次频率输出GPS结果
+        option.setIsNeedLocationDescribe(true);//可选，默认false，设置是否需要位置语义化结果，可以在BDLocation.getLocationDescribe里得到，结果类似于“在北京天安门附近”
+        option.setIsNeedLocationPoiList(true);//可选，默认false，设置是否需要POI结果，可以在BDLocation.getPoiList里得到
+        option.setIgnoreKillProcess(false);//可选，默认true，定位SDK内部是一个SERVICE，并放到了独立进程，设置是否在stop的时候杀死这个进程，默认不杀死
+        option.SetIgnoreCacheException(false);//可选，默认false，设置是否收集CRASH信息，默认收集
+        option.setEnableSimulateGps(false);//可选，默认false，设置是否需要过滤GPS仿真结果，默认需要
+        mLocationClient.setLocOption(option);
+        //开启定位
+        mLocationClient.start();
+    }
+
+    private class MyLocationListener implements BDLocationListener {
+
+        @Override
+        public void onReceiveLocation(BDLocation location) {
+            StringBuffer sb = new StringBuffer(256);
+            sb.append("time : ");
+            sb.append(location.getTime());
+            sb.append("\nerror code : ");
+            sb.append(location.getLocType());
+            sb.append("\nlatitude : ");
+            sb.append(location.getLatitude());
+            sb.append("\nlontitude : ");
+            sb.append(location.getLongitude());
+            sb.append("\nradius : ");
+            sb.append(location.getRadius());
+            if (location.getLocType() == BDLocation.TypeGpsLocation) {// GPS定位结果
+                sb.append("\nspeed : ");
+                sb.append(location.getSpeed());// 单位：公里每小时
+                sb.append("\nsatellite : ");
+                sb.append(location.getSatelliteNumber());
+                sb.append("\nheight : ");
+                sb.append(location.getAltitude());// 单位：米
+                sb.append("\ndirection : ");
+                sb.append(location.getDirection());// 单位度
+                sb.append("\naddr : ");
+                sb.append(location.getAddrStr());
+                sb.append("\ndescribe : ");
+                sb.append("gps定位成功");
+
+            } else if (location.getLocType() == BDLocation.TypeNetWorkLocation) {// 网络定位结果
+                sb.append("\naddr : ");
+                sb.append(location.getAddrStr());
+                //运营商信息
+                sb.append("\noperationers : ");
+                sb.append(location.getOperators());
+                sb.append("\ndescribe : ");
+                sb.append("网络定位成功");
+            } else if (location.getLocType() == BDLocation.TypeOffLineLocation) {// 离线定位结果
+                sb.append("\ndescribe : ");
+                sb.append("离线定位成功，离线定位结果也是有效的");
+            } else if (location.getLocType() == BDLocation.TypeServerError) {
+                sb.append("\ndescribe : ");
+                sb.append("服务端网络定位失败，可以反馈IMEI号和大体定位时间到loc-bugs@baidu.com，会有人追查原因");
+            } else if (location.getLocType() == BDLocation.TypeNetWorkException) {
+                sb.append("\ndescribe : ");
+                sb.append("网络不同导致定位失败，请检查网络是否通畅");
+            } else if (location.getLocType() == BDLocation.TypeCriteriaException) {
+                sb.append("\ndescribe : ");
+                sb.append("无法获取有效定位依据导致定位失败，一般是由于手机的原因，处于飞行模式下一般会造成这种结果，可以试着重启手机");
+            }
+            sb.append("\nlocationdescribe : ");
+            sb.append(location.getLocationDescribe());// 位置语义化信息
+            List<Poi> list = location.getPoiList();// POI数据
+            if (list != null) {
+                sb.append("\npoilist size = : ");
+                sb.append(list.size());
+                for (Poi p : list) {
+                    sb.append("\npoi= : ");
+                    sb.append(p.getId() + " " + p.getName() + " " + p.getRank());
+                }
+            }
+            //将获取到的gps定位地址和描述
+            GlobalContextValue.DeviceGPS = location.getAddrStr() + location.getLocationDescribe();
+            if (GlobalContextValue.DeviceGPS != null)
+            {
+                String clientGps = "";
+                try {
+                    clientGps = BuildGpsPacket();
+                }catch (JSONException e)
+                {
+                    e.printStackTrace();
+                }
+                //客户端停止推流告诉服务器开始推送状态
+                SessionManager.getInstance().writeToServer(clientGps);
+                Log.i(TAG, "GPS位置信息：" + clientGps);
+            }
+            //Log.e("描述：", sb.toString());
+        }
+        //构建登陆的gps位置信息
+        public String BuildGpsPacket() throws JSONException
+        {
+            JSONObject GpsPacket = new JSONObject();
+            GpsPacket.put("Type","LoginGps");
+            GpsPacket.put("ServiceName",GlobalContextValue.ServiceName);
+            GpsPacket.put("Gps",GlobalContextValue.DeviceGPS);
+            System.out.print(GpsPacket);
+            return GpsPacket.toString();
         }
     }
 }

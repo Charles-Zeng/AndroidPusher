@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission..ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-feature android:name="android.hardware.Camera"></uses-feature>
 
     <application
@@ -20,18 +20,25 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity android:name=".LoginActivity"
-            android:screenOrientation="portrait"
-            >
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
+        android:screenOrientation="portrait"
+        >
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN"/>
 
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
-        <activity android:name=".MainActivity"
-            android:screenOrientation="portrait"
-            >
-        </activity>
-    </application>
+            <category android:name="android.intent.category.LAUNCHER"/>
+        </intent-filter>
+    </activity>
+    <activity android:name=".MainActivity"
+        android:screenOrientation="portrait"
+        >
+    </activity>
+    <meta-data
+        android:name="com.baidu.lbsapi.API_KEY"
+        android:value="cmkAMhm4if4ubL2LCRMoxy3HLm0FSCGu" />
+    <service
+        android:name="com.baidu.location.f"
+        android:enabled="true"
+        android:process=":remote" />
+</application>
 
 </manifest>

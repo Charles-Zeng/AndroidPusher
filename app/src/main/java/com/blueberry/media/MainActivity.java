@@ -23,6 +23,8 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -63,6 +65,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     private static final String TAG = "MainActivity";
     private TextView StatusView;
     private SurfaceView mSurfaceView;
+    private Button btnToggle;
     private SurfaceHolder mSurfaceHolder;
     private Camera mCamera;
     private Camera.Size previewSize;
@@ -93,12 +96,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     }
 
     private void initView() {
+        btnToggle = (Button) findViewById(R.id.btn_toggle);
         StatusView = (TextView) findViewById(R.id.statusView);
         mSurfaceView = (SurfaceView) findViewById(R.id.surface_view);
         mSurfaceView.setKeepScreenOn(true);
         mSurfaceHolder = mSurfaceView.getHolder();
         mSurfaceHolder.addCallback(this);
-        /*btnToggle.setOnClickListener(new View.OnClickListener() {
+        btnToggle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //检查是否授予了摄像头的权限
@@ -113,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                     switchPublish();
                 }
             }
-        });*/
+        });
         //新页面接收数据
         Bundle bundle = this.getIntent().getExtras();
         //接收stopSecTime值
@@ -127,6 +131,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         } else {
             start();
         }
+        btnToggle.setText(isPublished ? "停止" : "开始");
     }
 
     private void start() {
@@ -173,10 +178,20 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         if (vencoder != null) {
             vencoder.start();
         }
-
         isPublished = true;
         StatusView.setTextColor(this.getResources().getColor(R.color.colorAccent));
         StatusView.setText("正在推流中。。。");
+        btnToggle.setText(isPublished ? "停止" : "开始");
+        String clientStatus = "";
+        try {
+            clientStatus = BuildClientPushStatus("started");
+        }catch (JSONException e)
+        {
+            e.printStackTrace();
+        }
+        //客户端停止推流告诉服务器开始推送状态
+        SessionManager.getInstance().writeToServer(clientStatus);
+        Log.i(TAG, "started: 开始推送时告诉服务器客户端推送的状态" + clientStatus);
     }
 
     private void stop() {
@@ -195,18 +210,19 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         aencoder.stop();
         aencoder.release();
         StatusView.setTextColor(this.getResources().getColor(R.color.colorAccent));
+        btnToggle.setText(isPublished ? "停止" : "开始");
         //关闭定时器，只需执行一次
         handler.removeCallbacks(runnable);
         String clientStatus = "";
         try {
-            clientStatus = BuildClientPushStatus();
+            clientStatus = BuildClientPushStatus("stoped");
         }catch (JSONException e)
         {
             e.printStackTrace();
         }
-       //客户端停止推流告诉服务器已经停止状态
+        //客户端停止推流告诉服务器已经停止状态
         SessionManager.getInstance().writeToServer(clientStatus);
-        Log.i(TAG, "stop: 停止后告诉服务器客户端推送的状态" + clientStatus);
+        Log.i(TAG, "stoped: 停止后告诉服务器客户端推送的状态" + clientStatus);
     }
 
 
@@ -377,9 +393,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             result = (360 - result) % 360;  // compensate the mirror
         } else {  // back-facing
             result = (info.orientation - degrees + 360) % 360;
+            Log.i(TAG, "setCameraDisplayOrientation: " + result);
         }
         //20180105 因为摄像头摄像需要调整
-        camera.setDisplayOrientation(90);
+        camera.setDisplayOrientation(result);
     }
 
     private void setCameraParameters() {
@@ -412,7 +429,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         parameters.setFocusMode(FOCUS_MODE_AUTO);
         parameters.setPreviewFormat(ImageFormat.NV21);
         parameters.setRotation(onOrientationChanged(0));
-
         mCamera.setParameters(parameters);
     }
 
@@ -492,7 +508,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     public Camera.PreviewCallback getPreviewCallback() {
         return new Camera.PreviewCallback() {
             byte[] dstByte = new byte[calculateFrameSize(ImageFormat.NV21)];
-
+            //byte[] dstByteSend = new byte[calculateFrameSize(ImageFormat.NV21)];
+            //byte[] dstByteSendDegree = new byte[calculateFrameSize(ImageFormat.NV21)];
             @Override
             public void onPreviewFrame(byte[] data, Camera camera) {
                 if (data != null) {
@@ -500,6 +517,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         // data 是Nv21
                         if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar) {
                             Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
+                            //dstByteSend = Yuv420Util.rotateYUV420Degree90(dstByte, GlobalContextValue.width, GlobalContextValue.height);
+                            //Yuv420Util.YUV420spRotateNegative90(dstByteSendDegree, dstByteSend,GlobalContextValue.width, GlobalContextValue.height);
                             //Log.d(TAG, "colorFormat: COLOR_FormatYUV420SemiPlanar");
                             //Log.d(TAG, String.format("colorFormatNv21ToYuv420SP-1=%s", colorFormat));
                         } else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar) {
@@ -512,12 +531,15 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         } else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar) {
                             //http://blog.csdn.net/jumper511/article/details/21719313
                             //这样处理的话颜色核能会有些失真。
-                            Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
+                            Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.height, GlobalContextValue.width);
                             Log.d(TAG, String.format("colorFormatNv21ToYuv420SP-3=%s", colorFormat));
                             //Log.d(TAG, "colorFormat: COLOR_FormatYUV420PackedPlanar");
                         }  else if (colorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar){
                             //华为colorFormat=39
                             Yuv420Util.Nv21ToYuv420SP(data, dstByte, GlobalContextValue.width, GlobalContextValue.height);
+                            //dstByteSend = Yuv420Util.rotateYUV420Degree90(dstByte, GlobalContextValue.width, GlobalContextValue.height);
+                            //Yuv420Util.YUV420spRotateNegative90(dstByteSendDegree, dstByteSend,GlobalContextValue.width, GlobalContextValue.height);
+                            //Yuv420Util.rotateYUV420Degree90(dstByte, dstByteSend, GlobalContextValue.width, GlobalContextValue.height);
                             Log.d(TAG, String.format("colorFormatNv21ToYuv420SP-4=%s", colorFormat));
                         }
                         else {
@@ -526,6 +548,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                             Log.d(TAG, String.format("colorFormatNv21ToYuv420SP-5=%s", colorFormat));
                             //System.arraycopy(data, 0, dstByte, 0, data.length);
                         }
+                        /*if (90 == onOrientationChanged(0))
+                        {
+                            onGetVideoFrame(dstByteSend);
+                        }else
+                        {
+                            onGetVideoFrame(dstByteSendDegree);
+                        }*/
                         onGetVideoFrame(dstByte);
                     }
                     camera.addCallbackBuffer(data);
@@ -709,12 +738,19 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             stop();
         }
     };
-    //构建心跳包
-    public String BuildClientPushStatus() throws JSONException
+    //构建客户端推流状态包
+    public String BuildClientPushStatus(String Status) throws JSONException
     {
         JSONObject PushStatusPacket = new JSONObject();
         PushStatusPacket.put("Type","StatusPush");
-        PushStatusPacket.put("Status","Stoped");
+        if (Status.equals("started"))
+        {
+            PushStatusPacket.put("Status","Started");
+        }
+        else
+        {
+            PushStatusPacket.put("Status","Stoped");
+        }
         System.out.print(PushStatusPacket);
         return PushStatusPacket.toString();
     }
