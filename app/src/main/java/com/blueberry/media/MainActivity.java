@@ -467,6 +467,11 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     @Override
     protected void onResume() {
         super.onResume();
+
+        if (isPublished) {
+            stop();
+        }
+
         onPause();
         initCamera();
         DataSource.getInstance().setActivity(this);
